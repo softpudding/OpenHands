@@ -74,95 +74,95 @@ def run_cli_entry(resume_conversation_id: str | None = None) -> None:
     session = get_session_prompter()
 
     # Main chat loop
-    while True:
-        try:
-            # Get user input
-            user_input = session.prompt(
-                HTML("<gold>> </gold>"),
-                multiline=False,
-            )
+    try:
+        while True:
+            try:
+                # Get user input
+                user_input = session.prompt(
+                    HTML("<gold>> </gold>"),
+                    multiline=False,
+                )
 
-            if not user_input.strip():
-                continue
+                if not user_input.strip():
+                    continue
 
-            # Handle commands
-            command = user_input.strip().lower()
+                # Handle commands
+                command = user_input.strip().lower()
 
-            message = Message(
-                role="user",
-                content=[TextContent(text=user_input)],
-            )
+                message = Message(
+                    role="user",
+                    content=[TextContent(text=user_input)],
+                )
 
-            if command == "/exit":
+                if command == "/exit":
+                    exit_confirmation = exit_session_confirmation()
+                    if exit_confirmation == UserConfirmation.ACCEPT:
+                        print_formatted_text(HTML("\n<yellow>Goodbye! 👋</yellow>"))
+                        _print_exit_hint(conversation.id)
+                        break
+
+                elif command == "/settings":
+                    settings_screen = SettingsScreen(conversation)
+                    settings_screen.display_settings()
+                    continue
+
+                elif command == "/mcp":
+                    mcp_screen = MCPScreen()
+                    mcp_screen.display_mcp_info(conversation.agent)
+                    continue
+
+                elif command == "/clear":
+                    display_welcome(conversation.id)
+                    continue
+
+                elif command == "/help":
+                    display_help()
+                    continue
+
+                elif command == "/status":
+                    print_formatted_text(HTML(f"<grey>Conversation ID: {conversation.id}</grey>"))
+                    print_formatted_text(HTML("<grey>Status: Active</grey>"))
+                    confirmation_status = (
+                        "enabled" if conversation.state.confirmation_mode else "disabled"
+                    )
+                    print_formatted_text(
+                        HTML(f"<grey>Confirmation mode: {confirmation_status}</grey>")
+                    )
+                    continue
+
+                elif command == "/confirm":
+                    runner.toggle_confirmation_mode()
+                    new_status = "enabled" if runner.is_confirmation_mode_enabled else "disabled"
+                    print_formatted_text(
+                        HTML(f"<yellow>Confirmation mode {new_status}</yellow>")
+                    )
+                    continue
+
+                elif command == "/resume":
+                    if not (
+                        conversation.state.agent_status == AgentExecutionStatus.PAUSED
+                        or conversation.state.agent_status
+                        == AgentExecutionStatus.WAITING_FOR_CONFIRMATION
+                    ):
+                        print_formatted_text(
+                            HTML("<red>No paused conversation to resume...</red>")
+                        )
+                        continue
+
+                    # Resume without new message
+                    message = None
+
+                runner.process_message(message)
+
+                print()  # Add spacing
+
+            except KeyboardInterrupt:
                 exit_confirmation = exit_session_confirmation()
                 if exit_confirmation == UserConfirmation.ACCEPT:
                     print_formatted_text(HTML("\n<yellow>Goodbye! 👋</yellow>"))
                     _print_exit_hint(conversation.id)
                     break
-
-            elif command == "/settings":
-                settings_screen = SettingsScreen(conversation)
-                settings_screen.display_settings()
-                continue
-
-            elif command == "/mcp":
-                mcp_screen = MCPScreen()
-                mcp_screen.display_mcp_info(conversation.agent)
-                continue
-
-            elif command == "/clear":
-                display_welcome(conversation.id)
-                continue
-
-            elif command == "/help":
-                display_help()
-                continue
-
-            elif command == "/status":
-                print_formatted_text(HTML(f"<grey>Conversation ID: {conversation.id}</grey>"))
-                print_formatted_text(HTML("<grey>Status: Active</grey>"))
-                confirmation_status = (
-                    "enabled" if conversation.state.confirmation_mode else "disabled"
-                )
-                print_formatted_text(
-                    HTML(f"<grey>Confirmation mode: {confirmation_status}</grey>")
-                )
-                continue
-
-            elif command == "/confirm":
-                runner.toggle_confirmation_mode()
-                new_status = "enabled" if runner.is_confirmation_mode_enabled else "disabled"
-                print_formatted_text(
-                    HTML(f"<yellow>Confirmation mode {new_status}</yellow>")
-                )
-                continue
-
-            elif command == "/resume":
-                if not (
-                    conversation.state.agent_status == AgentExecutionStatus.PAUSED
-                    or conversation.state.agent_status
-                    == AgentExecutionStatus.WAITING_FOR_CONFIRMATION
-                ):
-                    print_formatted_text(
-                        HTML("<red>No paused conversation to resume...</red>")
-                    )
-                    continue
-
-                # Resume without new message
-                message = None
-
-            runner.process_message(message)
-
-            print()  # Add spacing
-
-        except KeyboardInterrupt:
-            exit_confirmation = exit_session_confirmation()
-            if exit_confirmation == UserConfirmation.ACCEPT:
-                print_formatted_text(HTML("\n<yellow>Goodbye! 👋</yellow>"))
-                _print_exit_hint(conversation.id)
-                break
-
-
-    # Clean up terminal state
-    _restore_tty()
+    finally:
+        # Clean up terminal state - ensure this runs even on unhandled exceptions
+        _restore_tty()
 

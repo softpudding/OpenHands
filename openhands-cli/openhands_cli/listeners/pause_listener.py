@@ -53,6 +53,9 @@ class PauseListener(threading.Thread):
                 while not (self.is_paused() or self.is_stopped()):
                     if self._detect_pause_key_presses():
                         self._execute_pause()
+        except Exception:
+            # Ensure we don't leave terminal in bad state on any exception
+            pass
         finally:
             try:
                 self._input.close()
@@ -61,6 +64,11 @@ class PauseListener(threading.Thread):
 
     def stop(self) -> None:
         self._stop_event.set()
+        # Force the input to close to interrupt any blocking read operations
+        try:
+            self._input.close()
+        except Exception:
+            pass
 
     def is_stopped(self) -> bool:
         return self._stop_event.is_set()
